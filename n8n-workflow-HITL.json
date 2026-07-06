@@ -1,0 +1,651 @@
+{
+  "name": "travily-gemini-HITL",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "subtopics",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        208,
+        208
+      ],
+      "id": "743abaa6-b45e-45b7-9c18-ececc64bbbc3",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lecture-trigger",
+        "responseMode": "lastNode",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ec723116-e3ac-4533-b533-83ba7dc78db9",
+      "name": "Trigger",
+      "webhookId": "384dbb74-a37d-4250-a373-c62782255c67"
+    },
+    {
+      "parameters": {
+        "jsCode": "const required = [\"topic\",\"audience_level\",\"duration\",\n                  \"delivery_method\",\"platform_tools\",\"constraints\"];\nconst body = $input.first().json.body;\nconst missing = required.filter(k => !body[k] || body[k].trim() === \"\");\n\nif (missing.length > 0) {\n  throw new Error(`누락된 필드: ${missing.join(\", \")}`);\n}\nreturn [{ json: body }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        208
+      ],
+      "id": "d9342bf8-6097-41fe-ab5e-8cfde4456aac",
+      "name": "Field Check"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/plan",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "440773aa-656d-486a-9397-da5e09d692b3",
+      "name": "Plan"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "research_results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        464,
+        208
+      ],
+      "id": "7a8e5b78-3ec4-4f5f-afcc-28d904c5eea7",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/write",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"research_results\": {{ JSON.stringify($json.research_results) }},\n  \"topic\":\"{{ $('Trigger').item.json.body.topic }}\"          ,\n  \"audience_level\":  \"{{ $('Trigger').first().json.body.audience_level }}\",\n  \"duration\":        \"{{ $('Trigger').first().json.body.duration }}\",\n  \"delivery_method\": \"{{ $('Trigger').first().json.body.delivery_method }}\",\n  \"platform_tools\":  \"{{ $('Trigger').first().json.body.platform_tools }}\",\n  \"constraints\":     \"{{ $('Trigger').first().json.body.constraints }}\",\n  \"mode\":            \"initial\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        688,
+        0
+      ],
+      "id": "158f87f5-bf5a-4399-b822-b8f588b642c2",
+      "name": "Write"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/review_content",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft\": {{ JSON.stringify($json.draft) }},\n  \"constraints\": \"{{ $json.constraints }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        -176
+      ],
+      "id": "65f1b126-9c09-4609-8a1d-e4d7d869aaf8",
+      "name": "Review-Content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/review_time",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"draft\": {{ JSON.stringify($json.draft) }} }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        0
+      ],
+      "id": "e72ce81c-2618-4467-8409-ff78349f2c86",
+      "name": "Review-Time"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/review_difficulty",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"draft\": {{ JSON.stringify($json.draft) }}, \"audience_level\": \"{{ $json.audience_level }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        176
+      ],
+      "id": "9f901338-f44d-4739-a2d5-1f25618ec215",
+      "name": "Review-Difficulty"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/review_final",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"reviews\":        {{ JSON.stringify($json.reviews) }},\n  \"draft\":          {{ JSON.stringify($json.draft) }},\n  \"mode\":           \"initial\",\n  \"topic\":          \"{{ $json.topic }}\",\n  \"audience_level\": \"{{ $json.audience_level }}\",\n  \"duration\":       \"{{ $json.duration }}\",\n  \"delivery_method\":\"{{ $json.delivery_method }}\",\n  \"platform_tools\": \"{{ $json.platform_tools }}\",\n  \"constraints\":    \"{{ $json.constraints }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        -16
+      ],
+      "id": "5d2a04b1-e82f-4883-9aef-1ba4b06094f3",
+      "name": "Review-Final"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "88f6192b-aa13-4823-a17c-f2bde2d03b12",
+              "leftValue": "={{ $json.pass }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        192
+      ],
+      "id": "7718d244-a761-47b3-9a90-9ed4e3721285",
+      "name": "If-Pass"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{SLACK_WEBHOOK_URL}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=={{ \n\"📋 *강의계획서 검토 결과*\\n\" +\n\"━━━━━━━━━━━━━━━━━━━━━━\\n\\n\" +\n\"*점수:* \" + $json.review_score + \"점     \" +\n\"*통과 여부:* \" + ($json.pass ? \"✅ 통과\" : \"❌ 미달\") + \"\\n\\n\" +\n\"*📌 피드백*\\n\" + $json.feedback.replace(/(\\d+\\))/g, \"\\n$1\") + \"\\n\\n\" +\n\"━━━━━━━━━━━━━━━━━━━━━━\\n\" +\n\"*👉 터미널에서 아래 명령을 실행하세요*\\n\\n\" +\n\"*재작업:*\\n\" +\n\"```curl -X POST \\\"\" + $execution.resumeUrl + \"\\\" \\\\\\n  -H \\\"Content-Type: application/json\\\" \\\\\\n  -d '{\\\"decision\\\": \\\"rework\\\"}'```\\n\\n\" +\n\"*현재 버전 저장:*\\n\" +\n\"```curl -X POST \\\"\" + $execution.resumeUrl + \"\\\" \\\\\\n  -H \\\"Content-Type: application/json\\\" \\\\\\n  -d '{\\\"decision\\\": \\\"save\\\"}'```\"\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1184,
+        416
+      ],
+      "id": "d744b481-ab7e-41cc-8a8a-0244fbb4dee7",
+      "name": "If-False-Slack"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "limitWaitTime": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        416
+      ],
+      "id": "e4883432-1888-4245-9c5f-efd893878c8a",
+      "name": "Wait",
+      "webhookId": "e5104cb4-7b46-4d23-ba15-390158af83fc",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "123ca6da-3ec1-4330-a892-b72f05cbf5fd",
+              "leftValue": "={{ $json.body.decision }}",
+              "rightValue": "rework",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1440,
+        416
+      ],
+      "id": "59b4fb79-7ad2-4028-800c-7759da1f1ab6",
+      "name": "If-Rework"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/write",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft\":          {{ JSON.stringify($('Review-Final').first().json.draft) }},\n  \"feedback\":       {{ JSON.stringify($('Review-Final').first().json.feedback) }},\n  \"mode\":           \"rework\",\n  \"topic\":          \"{{ $('Trigger').first().json.body.topic }}\",\n  \"audience_level\": \"{{ $('Trigger').first().json.body.audience_level }}\",\n  \"duration\":       \"{{ $('Trigger').first().json.body.duration }}\",\n  \"delivery_method\":\"{{ $('Trigger').first().json.body.delivery_method }}\",\n  \"platform_tools\": \"{{ $('Trigger').first().json.body.platform_tools }}\",\n  \"constraints\":    \"{{ $('Trigger').first().json.body.constraints }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        608
+      ],
+      "id": "8982c9ef-3091-4c5d-ace9-0ae0a2b7da55",
+      "name": "Re-Write"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/review_final",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft\":    {{ JSON.stringify($json.draft) }},\n  \"feedback\": {{ JSON.stringify($('Review-Final').first().json.feedback) }},\n  \"mode\":     \"rework_check\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        832,
+        608
+      ],
+      "id": "85a7f7e7-6f5d-4279-a518-05f77dbcce8f",
+      "name": "Re-Review-Final"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/save",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft\": {{ JSON.stringify($json.draft) }},\n  \"pipeline_summary\": {\n    \"topic\":           \"{{ $('Trigger').first().json.body.topic }}\",\n    \"audience_level\":  \"{{ $('Trigger').first().json.body.audience_level }}\",\n    \"duration\":        \"{{ $('Trigger').first().json.body.duration }}\",\n    \"delivery_method\": \"{{ $('Trigger').first().json.body.delivery_method }}\",\n    \"platform_tools\":  \"{{ $('Trigger').first().json.body.platform_tools }}\",\n    \"constraints\":     \"{{ $('Trigger').first().json.body.constraints }}\",\n    \"review_score\":    {{ $('Review-Final').first().json.review_score }},\n    \"pass\":            true,\n    \"rework_count\":    0,\n    \"hitl_triggered\":  false,\n    \"human_decision\":  \"none\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1616,
+        96
+      ],
+      "id": "bdadecab-da7a-4cc6-8f32-5b85b27e335c",
+      "name": "Save-Auto"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/save",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft\": {{ JSON.stringify($('Review-Final').first().json.draft) }},\n  \"pipeline_summary\": {\n    \"topic\":           \"{{ $('Trigger').first().json.body.topic }}\",\n    \"audience_level\":  \"{{ $('Trigger').first().json.body.audience_level }}\",\n    \"duration\":        \"{{ $('Trigger').first().json.body.duration }}\",\n    \"delivery_method\": \"{{ $('Trigger').first().json.body.delivery_method }}\",\n    \"platform_tools\":  \"{{ $('Trigger').first().json.body.platform_tools }}\",\n    \"constraints\":     \"{{ $('Trigger').first().json.body.constraints }}\",\n    \"review_score\":    {{ $('Review-Final').first().json.review_score }},\n    \"pass\":            {{ $('Review-Final').first().json.pass }},\n    \"rework_count\":    0,\n    \"hitl_triggered\":  true,\n    \"human_decision\":  \"{{ $('Wait').first().json.body.decision }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1616,
+        608
+      ],
+      "id": "3836e675-ba04-4a88-a566-aa4841cf1dec",
+      "name": "Save-HITL"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/research",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"subtopic\": \"{{ $json.subtopics }}\", \"topic\": \"{{ $json.topic }}\", \"audience_level\": \"{{ $json.audience_level }}\", \"duration\": \"{{ $json.duration }}\", \"delivery_method\": \"{{ $json.delivery_method }}\", \"platform_tools\": \"{{ $json.platform_tools }}\", \"constraints\": \"{{ $json.constraints }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        0
+      ],
+      "id": "ebdd3045-8fa9-4522-b391-2215e26d99a3",
+      "name": "Research(병렬)",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        -112
+      ],
+      "id": "19fdc909-3221-42b5-813a-29887cf699fc",
+      "name": "Merge-Review"
+    },
+    {
+      "parameters": {
+        "jsCode": "const reviews = $input.all().map(item => item.json);\nconst input   = $('Trigger').first().json.body;\nconst draft   = $('Write').first().json.draft;\n\nreturn [{\n  json: {\n    reviews:         reviews,\n    draft:           draft,\n    mode:            \"initial\",\n    topic:           input.topic,\n    audience_level:  input.audience_level,\n    duration:        input.duration,\n    delivery_method: input.delivery_method,\n    platform_tools:  input.platform_tools,\n    constraints:     input.constraints,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        112
+      ],
+      "id": "5029fb15-18a8-4218-9217-cb69929e41f4",
+      "name": "Parsing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Field Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Field Check": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Research(병렬)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write": {
+      "main": [
+        [
+          {
+            "node": "Review-Content",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Review-Time",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Review-Difficulty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review-Content": {
+      "main": [
+        [
+          {
+            "node": "Merge-Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review-Time": {
+      "main": [
+        [
+          {
+            "node": "Merge-Review",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Review-Difficulty": {
+      "main": [
+        [
+          {
+            "node": "Merge-Review",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Review-Final": {
+      "main": [
+        [
+          {
+            "node": "If-Pass",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If-Pass": {
+      "main": [
+        [
+          {
+            "node": "Save-Auto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If-False-Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If-False-Slack": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "If-Rework",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If-Rework": {
+      "main": [
+        [
+          {
+            "node": "Re-Write",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save-HITL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-Write": {
+      "main": [
+        [
+          {
+            "node": "Re-Review-Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-Review-Final": {
+      "main": [
+        [
+          {
+            "node": "Save-HITL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research(병렬)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge-Review": {
+      "main": [
+        [
+          {
+            "node": "Parsing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsing": {
+      "main": [
+        [
+          {
+            "node": "Review-Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "39388b64-5178-4952-881d-9fc16bfa70e2",
+  "meta": {
+    "instanceId": "5b6035351801d3642da813f76e56d313a2d9e300b9e05bdafb509aefce6ccbc9"
+  },
+  "nodeGroups": [],
+  "id": "7cyg0ERuVQv8f58A",
+  "tags": []
+}
